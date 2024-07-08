@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -26,20 +27,20 @@ public class StudentService {
     }
 
     public ResponseEntity<?> fetchStudentById(String id) {
-        val student =  studentRepository.findById(id);
-        if(student.isPresent()){
-            val school = restTemplate.getForObject("http://localhost:8080/school/" + student.get().getSchoolId(), School.class);
-            val studentResponse = new StudentResponse(
-                    student.get().getId(),
-                    student.get().getName(),
-                    student.get().getAge(),
-                    student.get().getGender(),
-                    school
-            );
-            return new ResponseEntity<>(studentResponse, HttpStatus.OK);
-        }else{
-            return new ResponseEntity<>("No Student Found",HttpStatus.NOT_FOUND);
-        }
+        return studentRepository.findById(id)
+                .map(student -> {
+                    val school = restTemplate.getForObject("http://localhost:8080/school/" + student.getSchoolId(), School.class);
+                    val studentResponse = new StudentResponse(
+                            student.getId(),
+                            student.getName(),
+                            student.getAge(),
+                            student.getGender(),
+                            school
+                    );
+                    return new ResponseEntity<>(studentResponse, HttpStatus.OK);
+                })
+                .or(() -> (Optional<? extends ResponseEntity<StudentResponse>>) Optional.of(new ResponseEntity<>("No Student Found",HttpStatus.NOT_FOUND)))
+                .get();
     }
 
     public ResponseEntity<?> fetchStudents() {
